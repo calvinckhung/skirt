@@ -162,7 +162,7 @@ class FormatComposer:
 				bedrow[self.bed_columns[1]] = kir["target_start"]
 				bedrow[self.bed_columns[2]] = kir["target_end"]
 				bedrow[self.bed_columns[3]] = format_allele_info(kir)
-				bedrow[self.bed_columns[4]] = "."
+				bedrow[self.bed_columns[4]] = 0 #"." isn't compatible with Genome Browser
 				bedrow[self.bed_columns[5]] = kir["strand"]
 				bedrow[self.bed_columns[6]] = kir["target_start"]
 				bedrow[self.bed_columns[7]] = kir["target_end"]
@@ -183,7 +183,7 @@ class FormatComposer:
 					bedrow[self.bed_columns[1]] = variant_start
 					bedrow[self.bed_columns[2]] = variant_start + 1
 					bedrow[self.bed_columns[3]] = variant
-					bedrow[self.bed_columns[4]] = "."
+					bedrow[self.bed_columns[4]] = 0	#"." isn't compatible with Genome Browser
 					bedrow[self.bed_columns[5]] = kir["strand"]
 					bedrow[self.bed_columns[6]] = variant_start
 					bedrow[self.bed_columns[7]] = variant_start + 1
@@ -385,7 +385,7 @@ def find_contig_by_id(contigs, contig_id):
 
 def handle_variant_alleles(df, contigs, output_path):
 	current_contig = None
-	wd = os.environ['SKIRT_WD']
+	wd = os.getenv('SKIRT_WD', os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 	for idx, group in df[(df['matching_rate'] > 0.99) & (df['matching_rate'] < 1)].groupby('target_name').apply(locus_grouping).items():
 		for row in group:
 			if (current_contig is None or current_contig.id != idx):
@@ -577,10 +577,22 @@ def main():
 	genomic_paf.filter_perfect_match()
 	if (args.asm is not None):
 		# Use gzip to open the fasta file
+		gzipped = 0
+		with open(args.asm, 'rb') as f:
+			gzipped = f.read(2) == b'\x1f\x8b'
+
+		if gzipped:
+			# File is gzipped, open using gzip
 		with gzip.open(args.asm, 'rt') as f:
 			# Use Biopython's SeqIO module to read the fasta file
 			records = SeqIO.parse(f, 'fasta')
 			result_df = handle_variant_alleles(result_df, records, args.output_file)
+		else:
+			# File is not gzipped, open normally
+			with open(args.asm, 'r') as f:
+				# Use Biopython's SeqIO module to read the fasta file
+				records = SeqIO.parse(f, 'fasta')
+				result_df = handle_variant_alleles(result_df, records, args.output_file)
 	target_order = True if result_df.loc[result_df.first_valid_index(), 'strand']=="+" else False
 	result_df = result_df.sort_values(['target_name','target_start','matching_rate','matching_length','target_end'], ascending=[True, target_order, False, False, target_order])
 	result_df = drop_redundant_alleles(result_df)
