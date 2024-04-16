@@ -583,10 +583,10 @@ def main():
 
 		if gzipped:
 			# File is gzipped, open using gzip
-		with gzip.open(args.asm, 'rt') as f:
-			# Use Biopython's SeqIO module to read the fasta file
-			records = SeqIO.parse(f, 'fasta')
-			result_df = handle_variant_alleles(result_df, records, args.output_file)
+			with gzip.open(args.asm, 'rt') as f:
+				# Use Biopython's SeqIO module to read the fasta file
+				records = SeqIO.parse(f, 'fasta')
+				result_df = handle_variant_alleles(result_df, records, args.output_file)
 		else:
 			# File is not gzipped, open normally
 			with open(args.asm, 'r') as f:
